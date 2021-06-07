@@ -18,6 +18,7 @@
 #include "lcd.h"
 #include "inflate.h"
 #include "lib/xz/xz.h"
+#include "lib/zip/miniz.h"
 #include "save.h"
 #include "sound.h"
 #include "sys.h"
@@ -213,12 +214,32 @@ static byte *do_unxz(byte *data, int *len) {
 	return inf_buf;
 }
 
+static int muzip(byte *data, int *len) 
+{
+	int success = uncompress(inf_buf, &len, data, *len);
+	return 1;
+}
+
+static byte* mini_unzip(byte *data, int *len) 
+{
+	inf_buf = 0;
+	inf_pos = inf_len = 0;
+	if (muzip(data, *len) < 0)
+		return data;
+
+	*len = inf_pos;
+	return inf_buf;
+}
+
 static byte *decompress(byte *data, int *len)
 {
 	if (data[0] == 0x1f && data[1] == 0x8b)
 		return gunzip(data, len);
 	if(data[0] == 0xFD && !memcmp(data+1, "7zXZ", 4))
 		return do_unxz(data, len);
+	if(data[0] == 0x50 && data[1] == 0x4b)
+		return mini_unzip(data, len);
+
 	return data;
 }
 
